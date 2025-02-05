@@ -17,17 +17,11 @@ This project is a Node.js application that allows users to upload audio recordin
 node-audio-upload-app
 ├── src
 │   ├── controllers
-│   │   └── fileController.js
 │   ├── routes
-│   │   └── fileRoutes.js
 │   ├── services
-│   │   └── googleDriveService.js
-│   │   └── githubService.js
 │   ├── views
-│   │   └── upload.html
 │   └── app.js
 ├── config
-│   └── authConfig.js
 ├── public
 │   └── styles.css
 ├── package.json
@@ -52,7 +46,7 @@ node-audio-upload-app
    npm install
    ```
 
-4. Set up Google OAuth2 credentials and update `config/authConfig.js` with your client ID, client secret, and redirect URIs.
+4. Set up Google OAuth2 credentials and update `config/google_app.json` with your client ID, client secret, and redirect URIs.
 
 ## Usage
 
@@ -61,9 +55,11 @@ node-audio-upload-app
    npm start
    ```
 
-2. Open your web browser and navigate to `http://localhost:3000/upload` to access the upload page.
+2. Open your web browser and navigate to `http://localhost:3000/` to access the upload page.
 
-3. Use the form to upload audio recordings and authenticate with Google.
+3. Click the Authenticate link to log into Google.
+
+4. Use the form to upload audio recordings and authenticate with Google.
 
 ## Contributing
 

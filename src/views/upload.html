@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Audio Recording</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <h1>Upload Audio Recording</h1>
+    <form id="uploadForm" action="/api/files/upload" method="POST" enctype="multipart/form-data">
+        <label for="speaker">Speaker Name:</label>
+        <input type="text" id="speaker" name="speaker" required>
+
+        <label for="title">Sermon Title:</label>
+        <input type="text" id="title" name="title" required>
+
+        <label for="audio">Audio File:</label>
+        <input type="file" id="audio" name="audio" accept="audio/*" required>
+
+        <button type="submit">Upload</button>
+    </form>
+
+    <div id="authSection">
+        <h2>Authenticate with Google</h2>
+        <a href="/api/auth/google">Authenticate</a>
+    </div>
+</body>
+</html>

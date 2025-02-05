@@ -67,3 +67,5 @@ src/main/default/lwc/ovcLogDetailView/*
 
 **.tsbuildinfo
 !build/locf
+
+config/
