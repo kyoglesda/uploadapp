@@ -1,4 +1,5 @@
 const {v4: uuid} = require('uuid');
+const leftPad = require('left-pad');
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYSOFWEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -17,8 +18,8 @@ class Episode {
         this.description = description;
         this.enclosure = {url: audioUrl, type: 'audio/mpeg', length: size};
         this.guid = uuid();
-        this.pubDate = this.createPubDate();
         this.itunes_duration = Number.parseInt(duration, 10);
+        this.pubDate = new Date();
     }
 
     /** Properties */
@@ -32,14 +33,18 @@ class Episode {
     pubDate;
     a10_updated = new Date().toISOString();
 
-    createPubDate() {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const day = now.getDate();
-        const timezone = now.getTimezoneOffset();
-        const dayOfWeek = DAYSOFWEEK[now.getDay()];
-        return `${dayOfWeek}, ${day} ${MONTHS[month]} ${year} 11:00:00 ${timezone}`;
+    convertPubDateToString() {
+        const year = this.pubDate.getFullYear();
+        const month = this.pubDate.getMonth();
+        const day = this.pubDate.getDate();
+        const timezone = this.pubDate.getTimezoneOffset();
+        const timezoneSign = timezone > 0 ? '-' : '+'; 
+        const absTimezone = Math.abs(timezone);
+        const hours = Math.floor(absTimezone / 60);
+        const minutes = absTimezone % 60;
+        const timezoneString = `${timezoneSign}${leftPad(hours, 2, '0')}${leftPad(minutes, 2, '0')}`;
+        const dayOfWeek = DAYSOFWEEK[this.pubDate.getDay()];
+        return `${dayOfWeek}, ${day} ${MONTHS[month]} ${year} 11:00:00 ${timezoneString}`;
     }
 
     /**
@@ -48,7 +53,8 @@ class Episode {
      */
 
     appendToDom(dom) {
-        dom.window.document.querySelector('channel').appendChild(this.toDom(dom));
+        const topItem = dom.window.document.querySelector('item');
+        dom.window.document.querySelector('channel').insertBefore(this.toDom(dom), topItem);
     }
 
     toDom(dom) {
@@ -67,7 +73,7 @@ class Episode {
         description.textContent = this.description;
         item.appendChild(description);
         const pubDate = dom.window.document.createElement('pubDate');
-        pubDate.textContent = this.pubDate;
+        pubDate.textContent = this.convertPubDateToString();
         item.appendChild(pubDate);
         const a10_updated = dom.window.document.createElement('a10:updated');
         a10_updated.textContent = this.a10_updated;

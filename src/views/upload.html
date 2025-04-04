@@ -9,11 +9,14 @@
 <body>
     <h1>Upload Audio Recording</h1>
     <form id="uploadForm" action="/api/files/upload" method="POST" enctype="multipart/form-data">
-        <label for="speaker">Speaker Name:</label>
+        <label for="speaker">Speaker Name</label>
         <input type="text" id="speaker" name="speaker" required>
 
-        <label for="title">Sermon Title:</label>
+        <label for="title">Sermon Title</label>
         <input type="text" id="title" name="title" required>
+
+        <label for="description">Description</label>
+        <input type="text" id="description" name="description" required>
 
         <label for="audio">Audio File:</label>
         <input type="file" id="audio" name="audio" accept="audio/*" required>
