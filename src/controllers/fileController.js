@@ -35,7 +35,7 @@ const processRequest = async (res, audioFile, speaker, sermonTitle, description)
         return res.status(400).send('No file uploaded.');
     }
     const now = new Date();
-    const newFileName = `${now.getFullYear()}-${leftPad(now.getMonth(), 2, '0')}-${leftPad(now.getDate(), 2, '0')} ${speaker} - ${sermonTitle}.mp3`;
+    const newFileName = `${now.getFullYear()}-${leftPad(now.getMonth() + 1, 2, '0')}-${leftPad(now.getDate(), 2, '0')} ${speaker} - ${sermonTitle}.mp3`;
     
     const auth = await authenticate();
     
