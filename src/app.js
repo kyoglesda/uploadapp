@@ -6,8 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-//app.use(express.json());
-//app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
@@ -17,6 +16,11 @@ app.use('/api/auth', authRoutes);
 // Serve the upload page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'upload.html'));
+});
+
+// Serve the edit entries page
+app.get('/edit', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'edit.html'));
 });
 
 // Start the server

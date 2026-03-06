@@ -54,6 +54,7 @@ async function authenticateCallback(code) {
  * Uploads a file to Google Drive.
  * @param {OAuth2Client} auth
  * @param {String} filePath
+ * @param {String} fileName
  * @returns file ID
  */
 async function uploadFile(auth, filePath, fileName) {
@@ -76,6 +77,63 @@ async function uploadFile(auth, filePath, fileName) {
         return response.data.id;
     } catch (error) {
         throw new Error('Error uploading file: ' + error.message);
+    }
+}
+
+/**
+ * Uploads a PDF file to Google Drive.
+ * @param {OAuth2Client} auth
+ * @param {String} filePath
+ * @param {String} fileName
+ * @returns file ID
+ */
+async function uploadPdf(auth, filePath, fileName) {
+    const drive = google.drive({version: 'v3', auth});
+    const fileMetadata = {
+        name: fileName,
+        mimeType: 'application/pdf',
+        parents: ['1eQYwSa8D7852nJG-LFVVAIGsiYU6ct0W']
+    };
+    const media = {
+        mimeType: 'application/pdf',
+        body: fs.createReadStream(filePath)
+    };
+
+    try {
+        const response = await drive.files.create({
+            requestBody: fileMetadata,
+            media: media
+        });
+        return response.data.id;
+    } catch (error) {
+        throw new Error('Error uploading PDF: ' + error.message);
+    }
+}
+
+/**
+ * Sets sharing permissions on a PDF and returns viewer and direct download links.
+ * @param {OAuth2Client} auth
+ * @param {String} fileId
+ * @returns {{ viewerLink: string, directLink: string }}
+ */
+async function sharePdf(auth, fileId) {
+    const drive = google.drive({version: 'v3', auth});
+    const permission = {
+        type: 'anyone',
+        role: 'reader'
+    };
+
+    try {
+        await drive.permissions.create({
+            resource: permission,
+            fileId: fileId
+        });
+        return {
+            viewerLink: `https://drive.google.com/file/d/${fileId}/view?usp=sharing`,
+            directLink: `https://drive.google.com/uc?id=${fileId}`
+        };
+    } catch (error) {
+        throw new Error('Error sharing PDF: ' + error.message);
     }
 }
 
@@ -108,5 +166,7 @@ module.exports = {
     generateAuthUrl,
     authenticateCallback,
     uploadFile,
-    shareFile
+    shareFile,
+    uploadPdf,
+    sharePdf
 };

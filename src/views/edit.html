@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Feed Entries</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        #entryList { margin-bottom: 1.5rem; }
+        .entry-item {
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 0.4rem;
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .entry-item:hover { background: #e8f4e8; }
+        .entry-item.selected {
+            background: #d4edda;
+            border-color: #5cb85c;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            margin-bottom: 0;
+        }
+        #editForm {
+            display: none;
+            background: #f0f9f0;
+            border: 1px solid #5cb85c;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            padding: 1rem;
+            margin-bottom: 0.4rem;
+        }
+        #editForm label { margin-top: 0.6rem; }
+        #editForm label:first-of-type { margin-top: 0; }
+        #editAudioInfo { margin-bottom: 0.6rem; font-size: 0.9rem; color: #555; word-break: break-all; }
+        .entry-title { font-weight: normal; }
+        .entry-meta { font-size: 0.8rem; color: #777; margin-top: 0.2rem; }
+        .readonly-row { display: flex; gap: 0.5rem; font-size: 0.9rem; color: #555; margin-bottom: 0.4rem; }
+        .readonly-label { font-weight: bold; white-space: nowrap; }
+        #statusMsg { margin-top: 0.6rem; font-weight: bold; }
+        #statusMsg.success { color: #3a7d3a; }
+        #statusMsg.error { color: #c0392b; }
+        textarea#editDescription { width: 100%; min-height: 120px; box-sizing: border-box; padding: 0.5rem; }
+        .pdf-hint { font-size: 0.85rem; color: #666; margin-top: 0.2rem; margin-bottom: 0.4rem; }
+        .form-buttons { margin-top: 0.8rem; }
+    </style>
+</head>
+<body>
+    <h1>Edit Feed Entries</h1>
+    <p><a href="/">Back to Upload</a></p>
+
+    <h2>Select an Entry to Edit</h2>
+    <div id="loadingMsg">Loading entries...</div>
+    <div id="entryList"></div>
+
+    <!-- Form is moved inline after the selected entry by JS -->
+    <form id="editForm" enctype="multipart/form-data">
+        <input type="hidden" id="editGuid">
+
+        <div id="editAudioInfo" style="display:none;">
+            <strong>Audio file:</strong> <span id="editAudioUrl"></span>
+        </div>
+
+        <div class="readonly-row">
+            <span class="readonly-label">Duration:</span>
+            <span id="editDuration"></span>
+        </div>
+
+        <label for="editPubDate">Published Date</label>
+        <input type="text" id="editPubDate" name="pubDate">
+
+        <label for="editTitle">Title</label>
+        <input type="text" id="editTitle" name="title" required>
+
+        <label for="editDescription">Description</label>
+        <textarea id="editDescription" name="description"></textarea>
+
+        <label for="editPdf">Presentation Slides (PDF, optional):</label>
+        <input type="file" id="editPdf" name="pdf" accept="application/pdf">
+        <p class="pdf-hint">If a PDF is selected, links to the Google Drive viewer and direct download will be appended to the description.</p>
+
+        <div id="statusMsg"></div>
+
+        <div class="form-buttons">
+            <button type="submit">Save Changes</button>
+            <button type="button" id="cancelBtn" style="margin-left:0.5rem; background:#888;">Cancel</button>
+        </div>
+    </form>
+
+    <script>
+        let entries = [];
+
+        function formatDuration(seconds) {
+            const total = parseInt(seconds, 10);
+            if (!total || isNaN(total)) return '';
+            const h = Math.floor(total / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            return h > 0 ? `${h}h ${m}m` : `${m}m`;
+        }
+
+        async function loadEntries() {
+            const loadingMsg = document.getElementById('loadingMsg');
+            try {
+                const res = await fetch('/api/files/entries');
+                if (!res.ok) throw new Error('Failed to load entries');
+                entries = await res.json();
+                renderList();
+            } catch (err) {
+                loadingMsg.textContent = 'Error loading entries: ' + err.message;
+            } finally {
+                loadingMsg.style.display = 'none';
+            }
+        }
+
+        function renderList() {
+            const list = document.getElementById('entryList');
+            const editForm = document.getElementById('editForm');
+
+            // The form may have been moved inside the list by insertBefore.
+            // Rescue it before wiping innerHTML, otherwise it gets destroyed.
+            if (list.contains(editForm)) {
+                document.body.appendChild(editForm);
+            }
+
+            if (entries.length === 0) {
+                list.textContent = 'No entries found.';
+                return;
+            }
+            list.innerHTML = '';
+            entries.forEach((entry, i) => {
+                const div = document.createElement('div');
+                div.className = 'entry-item';
+                div.dataset.index = i;
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'entry-title';
+                titleEl.textContent = entry.title || '(no title)';
+                div.appendChild(titleEl);
+
+                const metaParts = [];
+                if (entry.pubDate) metaParts.push(entry.pubDate);
+                const dur = formatDuration(entry.duration);
+                if (dur) metaParts.push(dur);
+                if (metaParts.length > 0) {
+                    const metaEl = document.createElement('div');
+                    metaEl.className = 'entry-meta';
+                    metaEl.textContent = metaParts.join('  ·  ');
+                    div.appendChild(metaEl);
+                }
+
+                div.addEventListener('click', () => openEditForm(i, div));
+                list.appendChild(div);
+            });
+        }
+
+        function openEditForm(index, clickedEl) {
+            document.querySelectorAll('.entry-item').forEach(el => el.classList.remove('selected'));
+            clickedEl.classList.add('selected');
+
+            const entry = entries[index];
+            document.getElementById('editGuid').value = entry.guid;
+            document.getElementById('editTitle').value = entry.title;
+            document.getElementById('editDescription').value = entry.description;
+            document.getElementById('editPdf').value = '';
+            document.getElementById('editPubDate').value = entry.pubDate || '';
+            document.getElementById('editDuration').textContent = formatDuration(entry.duration);
+
+            const audioInfo = document.getElementById('editAudioInfo');
+            if (entry.enclosureUrl) {
+                document.getElementById('editAudioUrl').textContent = entry.enclosureUrl;
+                audioInfo.style.display = 'block';
+            } else {
+                audioInfo.style.display = 'none';
+            }
+
+            const editForm = document.getElementById('editForm');
+            document.getElementById('statusMsg').textContent = '';
+            document.getElementById('statusMsg').className = '';
+
+            // Move form to appear directly below the clicked entry
+            clickedEl.parentNode.insertBefore(editForm, clickedEl.nextSibling);
+            editForm.style.display = 'block';
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const guid = document.getElementById('editGuid').value;
+            const statusMsg = document.getElementById('statusMsg');
+
+            statusMsg.textContent = 'Saving...';
+            statusMsg.className = '';
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('editTitle').value.trim());
+            formData.append('description', document.getElementById('editDescription').value);
+            formData.append('pubDate', document.getElementById('editPubDate').value.trim());
+            const pdfInput = document.getElementById('editPdf');
+            if (pdfInput.files.length > 0) {
+                formData.append('pdf', pdfInput.files[0]);
+            }
+
+            try {
+                const res = await fetch(`/api/files/entries/${encodeURIComponent(guid)}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                const text = await res.text();
+                if (res.ok) {
+                    statusMsg.textContent = text;
+                    statusMsg.className = 'success';
+                    const title = document.getElementById('editTitle').value.trim();
+                    const description = document.getElementById('editDescription').value;
+                    const pubDate = document.getElementById('editPubDate').value.trim();
+                    const idx = entries.findIndex(ep => ep.guid === guid);
+                    if (idx !== -1) {
+                        entries[idx].title = title;
+                        entries[idx].description = description;
+                        entries[idx].pubDate = pubDate;
+                        renderList();
+                    }
+                } else {
+                    statusMsg.textContent = 'Error: ' + text;
+                    statusMsg.className = 'error';
+                }
+            } catch (err) {
+                statusMsg.textContent = 'Error: ' + err.message;
+                statusMsg.className = 'error';
+            }
+        });
+
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            const editForm = document.getElementById('editForm');
+            editForm.style.display = 'none';
+            document.querySelectorAll('.entry-item').forEach(el => el.classList.remove('selected'));
+        });
+
+        loadEntries();
+    </script>
+</body>
+</html>

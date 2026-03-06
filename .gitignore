@@ -69,3 +69,4 @@ src/main/default/lwc/ovcLogDetailView/*
 !build/locf
 
 config/
+tmpclaude*

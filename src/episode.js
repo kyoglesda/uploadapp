@@ -70,7 +70,11 @@ class Episode {
         itunes_title.textContent = this.itunes_title;
         item.appendChild(itunes_title);
         const description = dom.window.document.createElement('description');
-        description.textContent = this.description;
+        if (this.description && this.description.includes('<')) {
+            description.appendChild(dom.window.document.createCDATASection(this.description));
+        } else {
+            description.textContent = this.description || '';
+        }
         item.appendChild(description);
         const pubDate = dom.window.document.createElement('pubDate');
         pubDate.textContent = this.convertPubDateToString();

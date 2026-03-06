@@ -21,12 +21,20 @@
         <label for="audio">Audio File:</label>
         <input type="file" id="audio" name="audio" accept="audio/*" required>
 
+        <label for="pdf">Presentation Slides (PDF, optional):</label>
+        <input type="file" id="pdf" name="pdf" accept="application/pdf">
+
         <button type="submit">Upload</button>
     </form>
 
     <div id="authSection">
         <h2>Authenticate with Google</h2>
         <a href="/api/auth/google">Authenticate</a>
+    </div>
+
+    <div id="editSection">
+        <h2>Edit Existing Entries</h2>
+        <a href="/edit">Edit Entries</a>
     </div>
 </body>
 </html>
