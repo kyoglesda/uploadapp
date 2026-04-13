@@ -12,15 +12,16 @@ const fs = require('fs').promises;
 
 exports.uploadAudio = async (req, res) => {
     try {
-        const form = new formidable.IncomingForm();
+        const form = new formidable.IncomingForm({ allowEmptyFiles: true, minFileSize: 0 });
         form.parse(req, async (err, fields, files) => {
             if (err != null) {
                 console.error(err);
                 return res.status(500).send('An error occurred while uploading the file. ' + err);
             }
 
-            const pdfFile = files.pdf ? files.pdf[0] : null;
-            await processRequest(res, files.audio[0], fields.speaker[0], fields.title[0], fields.description[0], pdfFile);
+            const pdfFile = (files.pdf?.[0]?.size > 0) ? files.pdf[0] : null;
+            const audioFile = (files.audio?.[0]?.size > 0) ? files.audio[0] : null;
+            await processRequest(res, audioFile, fields.speaker[0], fields.title[0], fields.description[0], pdfFile);
         });
     } catch (error) {
         console.error(error);
@@ -71,8 +72,9 @@ const processRequest = async (res, audioFile, speaker, sermonTitle, description,
     await removeTextFromFile(filePath, textToRemove);
 
     await commitChanges(appConfig.feedRepo, episodeTitle);
-    await pushChanges(appConfig.feedRepo);
+    //await pushChanges(appConfig.feedRepo);
 
+    console.log(`${new Date().toISOString()} File uploaded and RSS feed updated successfully.`);
     res.status(200).send('File uploaded and RSS feed updated successfully.');
 };
 
@@ -101,7 +103,7 @@ exports.updateEntry = async (req, res) => {
             const title = fields.title ? fields.title[0] : undefined;
             const description = fields.description !== undefined ? fields.description[0] : undefined;
             const pubDate = fields.pubDate ? fields.pubDate[0] : undefined;
-            const pdfFile = files.pdf ? files.pdf[0] : null;
+            const pdfFile = (files.pdf?.[0]?.size > 0) ? files.pdf[0] : null;
             await processUpdate(res, guid, title, description, pdfFile, pubDate);
         });
     } catch (error) {

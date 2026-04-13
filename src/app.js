@@ -6,6 +6,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use((req, _res, next) => {
+    console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+    next();
+});
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 

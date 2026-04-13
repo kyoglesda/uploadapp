@@ -4,7 +4,9 @@ jest.mock('../src/services/googleDriveService');
 jest.mock('../src/services/githubService');
 jest.mock('get-audio-duration');
 jest.mock('../src/feed');
+jest.mock('formidable');
 
+const formidable = require('formidable');
 const googleDriveService = require('../src/services/googleDriveService');
 const githubService = require('../src/services/githubService');
 const { getAudioDurationInSeconds } = require('get-audio-duration');
@@ -297,5 +299,102 @@ describe('processUpdate', () => {
         const { processUpdate } = require('../src/controllers/fileController');
         await processUpdate(mockRes, 'some-guid', undefined, undefined, null, undefined);
         expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+});
+
+describe('uploadAudio - error handling', () => {
+    let mockReq;
+    let mockRes;
+
+    beforeEach(() => {
+        mockReq = {};
+        mockRes = {
+            status: jest.fn().mockReturnThis(),
+            send: jest.fn().mockReturnThis(),
+        };
+    });
+
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('returns 500 when formidable encounters a parse error', async () => {
+        const parseError = new Error('Unexpected end of multipart data');
+
+        formidable.IncomingForm.mockImplementation(() => ({
+            parse: jest.fn((req, callback) => callback(parseError, {}, {})),
+        }));
+
+        const { uploadAudio } = require('../src/controllers/fileController');
+        await uploadAudio(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(500);
+        expect(mockRes.send).toHaveBeenCalledWith(
+            expect.stringContaining('An error occurred while uploading the file.')
+        );
+    });
+});
+
+describe('uploadAudio - file size filtering', () => {
+    let mockReq;
+    let mockRes;
+
+    beforeEach(() => {
+        mockReq = {};
+        mockRes = {
+            status: jest.fn().mockReturnThis(),
+            send: jest.fn().mockReturnThis(),
+        };
+
+        googleDriveService.authenticate.mockResolvedValue({});
+        googleDriveService.uploadFile.mockResolvedValue('audio-file-id');
+        googleDriveService.shareFile.mockResolvedValue('https://drive.google.com/uc?id=audio-file-id');
+        githubService.fetchLatestChanges.mockResolvedValue();
+        githubService.commitChanges.mockResolvedValue();
+        getAudioDurationInSeconds.mockResolvedValue(3600);
+        Feed.fromFile.mockReturnValue({ addEpisode: jest.fn().mockResolvedValue() });
+    });
+
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('returns 400 when submitted audio file is 0 bytes', async () => {
+        formidable.IncomingForm.mockImplementation(() => ({
+            parse: jest.fn((req, callback) => callback(null,
+                { speaker: ['John'], title: ['Sermon'], description: ['Desc'] },
+                { audio: [{ size: 0, filepath: '/tmp/audio.mp3' }] }
+            )),
+        }));
+
+        const { uploadAudio } = require('../src/controllers/fileController');
+        await uploadAudio(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockRes.send).toHaveBeenCalledWith('No file uploaded.');
+    });
+
+    test('ignores 0-byte PDF and uploads audio without PDF', async () => {
+        // uploadAudio does not await the async parse callback, so we capture
+        // its returned Promise and await it directly to let processRequest finish.
+        let parseCallbackPromise;
+        formidable.IncomingForm.mockImplementation(() => ({
+            parse: jest.fn((req, callback) => {
+                parseCallbackPromise = callback(null,
+                    { speaker: ['John'], title: ['Sermon'], description: ['Desc'] },
+                    {
+                        audio: [{ size: 5000, filepath: '/tmp/audio.mp3' }],
+                        pdf: [{ size: 0, filepath: '/tmp/empty.pdf' }],
+                    }
+                );
+            }),
+        }));
+
+        const { uploadAudio } = require('../src/controllers/fileController');
+        uploadAudio(mockReq, mockRes);
+        await parseCallbackPromise;
+
+        expect(googleDriveService.uploadPdf).not.toHaveBeenCalled();
+        expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 });
