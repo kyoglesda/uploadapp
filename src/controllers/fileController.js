@@ -72,7 +72,7 @@ const processRequest = async (res, audioFile, speaker, sermonTitle, description,
     await removeTextFromFile(filePath, textToRemove);
 
     await commitChanges(appConfig.feedRepo, episodeTitle);
-    //await pushChanges(appConfig.feedRepo);
+    await pushChanges(appConfig.feedRepo);
 
     console.log(`${new Date().toISOString()} File uploaded and RSS feed updated successfully.`);
     res.status(200).send('File uploaded and RSS feed updated successfully.');
